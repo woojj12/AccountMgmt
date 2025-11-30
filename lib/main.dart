@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Import for MethodChannel
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -12,13 +13,31 @@ import 'models/transaction.dart' as txn;
 
 // Android App Group ID
 const String appGroupId = 'group.com.example.AccountMgmt';
+// Method Channel for Deep Linking
+const String deepLinkChannel = 'com.example.account_mgmt/deep_link';
+
+// Global navigator key
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting();
   // Set App Group ID for HomeWidget
   HomeWidget.setAppGroupId(appGroupId);
+  
   runApp(const MyApp());
+
+  // Setup MethodChannel after runApp for deep linking
+  const MethodChannel channel = MethodChannel(deepLinkChannel);
+  channel.setMethodCallHandler((call) async {
+    if (call.method == 'open_add_expense_screen') {
+      // Use the navigatorKey to show the dialog without needing a build context
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        _showTransactionDialog(context, 'expense');
+      }
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -29,6 +48,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => TransactionProvider(),
       child: MaterialApp(
+        navigatorKey: navigatorKey, // Assign the global navigatorKey
         title: '용돈 관리 앱',
         theme: ThemeData(
           primarySwatch: Colors.deepPurple,
@@ -58,7 +78,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _listenForWidgetTaps();
+    // The old listener is removed, MethodChannel is used instead.
   }
 
   @override
@@ -72,14 +92,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     Provider.of<TransactionProvider>(context, listen: false).removeListener(_updateWidget);
     super.dispose();
-  }
-
-  void _listenForWidgetTaps() {
-    HomeWidget.widgetClicked.listen((Uri? uri) {
-      if (uri?.host == 'open_add_expense') {
-        _showTransactionDialog(context, 'expense');
-      }
-    });
   }
 
   void _updateWidget() {
@@ -456,7 +468,7 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2101), // Extended date range
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
@@ -491,6 +503,33 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
       }
       Navigator.of(context).pop();
     }
+  }
+
+  void _deleteTransaction() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('거래내역 삭제'),
+        content: const Text('정말로 이 거래내역을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            child: const Text('취소'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+          ),
+          TextButton(
+            child: const Text('삭제'),
+            onPressed: () {
+              Provider.of<TransactionProvider>(context, listen: false)
+                  .deleteTransaction(widget.transaction!.id!);
+              Navigator.of(ctx).pop(); // Close the confirmation dialog
+              Navigator.of(context).pop(); // Close the edit dialog
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -551,6 +590,13 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
         ),
       ),
       actions: <Widget>[
+        if (widget.transaction != null)
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _deleteTransaction,
+            tooltip: '삭제',
+          ),
+        const Spacer(),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('취소'),
