@@ -535,56 +535,58 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.transaction == null ? (widget.type == 'income' ? '수입 추가' : '지출 추가') : '거래 수정'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              TextFormField(
-                controller: _amountController,
-                decoration: const InputDecoration(labelText: '금액'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '금액을 입력하세요.';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return '숫자만 입력하세요.';
-                  }
-                  return null;
-                },
-              ),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: const InputDecoration(labelText: '카테고리'),
-                items: _categories.map((String category) {
-                  return DropdownMenuItem<String>(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    _selectedCategory = newValue!;
-                  });
-                },
-              ),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: '내용 (선택)'),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(child: Text(DateFormat('yyyy년 MM월 dd일').format(_selectedDate))),
-                  TextButton(
-                    onPressed: () => _selectDate(context),
-                    child: const Text('날짜 선택'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextFormField(
+                  controller: _amountController,
+                  decoration: const InputDecoration(labelText: '금액'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return '금액을 입력하세요.';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return '숫자만 입력하세요.';
+                    }
+                    return null;
+                  },
+                ),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  decoration: const InputDecoration(labelText: '카테고리'),
+                  items: _categories.map((String category) {
+                    return DropdownMenuItem<String>(
+                      value: category,
+                      child: Text(category),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    setState(() {
+                      _selectedCategory = newValue!;
+                    });
+                  },
+                ),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(labelText: '내용 (선택)'),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(child: Text(DateFormat('yyyy년 MM월 dd일').format(_selectedDate))),
+                    TextButton(
+                      onPressed: () => _selectDate(context),
+                      child: const Text('날짜 선택'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+        ),
       ),
       actions: <Widget>[
         if (widget.transaction != null)
