@@ -589,20 +589,31 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
         ),
       ),
       actions: <Widget>[
-        if (widget.transaction != null)
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: _deleteTransaction,
-          ),
-        const Spacer(),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('취소'),
-        ),
-        ElevatedButton(
-          onPressed: _saveTransaction,
-          child: const Text('저장'),
-        ),
+        Row(
+          children: [
+            if (widget.transaction != null)
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: _deleteTransaction,
+              ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('취소'),
+                  ),
+
+                  ElevatedButton(
+                    onPressed: _saveTransaction,
+                    child: const Text('저장'),
+                  ),
+                ],
+              ),
+            )
+          ],
+        )
       ],
     );
   }
