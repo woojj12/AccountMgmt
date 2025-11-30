@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Import for MethodChannel
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -11,13 +12,32 @@ import 'models/transaction.dart' as txn;
 
 // Android App Group ID
 const String appGroupId = 'group.com.example.AccountMgmt';
+// Method Channel for Deep Linking
+const String deepLinkChannel = 'com.example.account_mgmt/deep_link';
+
+// Global navigator key
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting();
   // Set App Group ID for HomeWidget
   HomeWidget.setAppGroupId(appGroupId);
+  
   runApp(const MyApp());
+
+  // Setup MethodChannel after runApp
+  const MethodChannel channel = MethodChannel(deepLinkChannel);
+  channel.setMethodCallHandler((call) async {
+    if (call.method == 'open_add_expense_screen') {
+      // Use the navigatorKey to show the dialog
+      // Ensure the context is not null before using it.
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        _showTransactionDialog(context, 'expense');
+      }
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -28,6 +48,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => TransactionProvider(),
       child: MaterialApp(
+        navigatorKey: navigatorKey, // Assign the navigatorKey
         title: '용돈 관리 앱',
         theme: ThemeData(
           primarySwatch: Colors.deepPurple,
@@ -57,7 +78,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _listenForWidgetTaps();
   }
 
   @override
@@ -71,14 +91,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     Provider.of<TransactionProvider>(context, listen: false).removeListener(_updateWidget);
     super.dispose();
-  }
-
-  void _listenForWidgetTaps() {
-    HomeWidget.widgetClicked.listen((Uri? uri) {
-      if (uri?.host == 'open_add_expense') {
-        _showTransactionDialog(context, 'expense');
-      }
-    });
   }
 
   void _updateWidget() {

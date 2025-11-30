@@ -12,19 +12,6 @@ class AppWidgetProvider : HomeWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: android.content.SharedPreferences) {
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_layout).apply {
-                // Open App on Widget Click
-                val pendingIntent = PendingIntent.getActivity(
-                    context,
-                    0,
-                    Intent(context, MainActivity::class.java),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                setOnClickPendingIntent(R.id.widget_root, pendingIntent)
-
-                val balance = widgetData.getString("current_balance", "₩0")
-                setTextViewText(R.id.tv_balance, balance ?: "₩0")
-
-                // Add Expense Button Click
                 val addExpenseIntent = Intent(context, MainActivity::class.java).apply {
                     action = "android.intent.action.VIEW"
                     data = Uri.parse("accountmgmt://open_add_expense")
@@ -35,7 +22,10 @@ class AppWidgetProvider : HomeWidgetProvider() {
                     addExpenseIntent, 
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
-                setOnClickPendingIntent(R.id.btn_add_expense, addExpensePendingIntent)
+                setOnClickPendingIntent(R.id.widget_root, addExpensePendingIntent)
+
+                val balance = widgetData.getString("current_balance", "₩0")
+                setTextViewText(R.id.tv_balance, balance ?: "₩0")
             }
             appWidgetManager.updateAppWidget(widgetId, views)
         }
