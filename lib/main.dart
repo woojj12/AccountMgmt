@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -456,7 +455,7 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2101),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
@@ -526,8 +525,7 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
       title: Text(widget.transaction == null ? (widget.type == 'income' ? '수입 추가' : '지출 추가') : '거래 수정'),
       content: Form(
         key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
+        child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               TextFormField(
@@ -575,7 +573,6 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
               ),
             ],
           ),
-        ),
       ),
       actions: <Widget>[
         if (widget.transaction != null)

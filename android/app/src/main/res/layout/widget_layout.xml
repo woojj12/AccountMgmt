@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,20 +10,18 @@
     android:background="@drawable/widget_background">
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="현재 잔액"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp" />
-
-    <TextView
         android:id="@+id/tv_balance"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:text="₩0"
         android:textColor="#FFFFFF"
-        android:textSize="28sp"
         android:textStyle="bold"
+        android:maxLines="1"
+        app:autoSizeTextType="uniform"
+        app:autoSizeMinTextSize="12sp"
+        app:autoSizeMaxTextSize="28sp"
+        app:autoSizeStepGranularity="2sp"
         android:layout_marginTop="4dp" />
 
     <Button
