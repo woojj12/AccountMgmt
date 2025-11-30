@@ -2,14 +2,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'dart:async';
 
+import 'package:home_widget/home_widget.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'providers/transaction_provider.dart';
 import 'models/transaction.dart' as txn;
 
-void main() {
-  // Ensure that plugin services are initialized before running the app
+// Android App Group ID
+const String appGroupId = 'group.com.example.AccountMgmt';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting();
+  // Set App Group ID for HomeWidget
+  HomeWidget.setAppGroupId(appGroupId);
   runApp(const MyApp());
 }
 
@@ -34,8 +42,71 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
+
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  bool _isCalendarView = false;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
+    _listenForWidgetTaps();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateWidget();
+    Provider.of<TransactionProvider>(context).addListener(_updateWidget);
+  }
+
+  @override
+  void dispose() {
+    Provider.of<TransactionProvider>(context, listen: false).removeListener(_updateWidget);
+    super.dispose();
+  }
+
+  void _listenForWidgetTaps() {
+    HomeWidget.widgetClicked.listen((Uri? uri) {
+      if (uri?.host == 'open_add_expense') {
+        _showTransactionDialog(context, 'expense');
+      }
+    });
+  }
+
+  void _updateWidget() {
+    final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+    final formatter = NumberFormat.currency(locale: 'ko_KR', symbol: '₩');
+    final balance = formatter.format(transactionProvider.balance);
+
+    HomeWidget.saveWidgetData<String>('current_balance', balance);
+    HomeWidget.updateWidget(
+      name: 'AppWidgetProvider',
+      androidName: 'AppWidgetProvider',
+    );
+  }
+
+  List<txn.Transaction> _getEventsForDay(DateTime day) {
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
+    return provider.transactions.where((transaction) => isSameDay(transaction.date, day)).toList();
+  }
+
+  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+    if (!isSameDay(_selectedDay, selectedDay)) {
+      setState(() {
+        _selectedDay = selectedDay;
+        _focusedDay = focusedDay;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +115,31 @@ class MyHomePage extends StatelessWidget {
         title: const Text('나의 용돈 관리'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        actions: [
+          IconButton(
+            icon: Icon(_isCalendarView ? Icons.list : Icons.calendar_today),
+            onPressed: () {
+              setState(() {
+                _isCalendarView = !_isCalendarView;
+              });
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
           const SummaryCard(),
-          const Expanded(child: TransactionList()),
+          if (_isCalendarView)
+            Expanded(
+              child: TransactionCalendar(
+                focusedDay: _focusedDay,
+                selectedDay: _selectedDay,
+                onDaySelected: _onDaySelected,
+                getEventsForDay: _getEventsForDay,
+              ),
+            )
+          else
+            const Expanded(child: TransactionList()),
         ],
       ),
       floatingActionButton: Column(
@@ -188,6 +279,133 @@ class TransactionList extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class TransactionCalendar extends StatelessWidget {
+  final DateTime focusedDay;
+  final DateTime? selectedDay;
+  final Function(DateTime, DateTime) onDaySelected;
+  final List<txn.Transaction> Function(DateTime) getEventsForDay;
+
+  const TransactionCalendar({
+    super.key,
+    required this.focusedDay,
+    required this.selectedDay,
+    required this.onDaySelected,
+    required this.getEventsForDay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedDayEvents = selectedDay != null ? getEventsForDay(selectedDay!) : [];
+    double dailyIncome = 0;
+    double dailyExpense = 0;
+    for (var event in selectedDayEvents) {
+      if (event.type == 'income') {
+        dailyIncome += event.amount;
+      } else {
+        dailyExpense += event.amount;
+      }
+    }
+    double dailyNet = dailyIncome - dailyExpense;
+    final formatter = NumberFormat.currency(locale: 'ko_KR', symbol: '₩');
+
+    return Column(
+      children: [
+        TableCalendar(
+          locale: 'ko_KR',
+          firstDay: DateTime.utc(2010, 10, 16),
+          lastDay: DateTime.utc(2030, 3, 14),
+          focusedDay: focusedDay,
+          selectedDayPredicate: (day) => isSameDay(selectedDay, day),
+          onDaySelected: onDaySelected,
+          eventLoader: getEventsForDay,
+          calendarStyle: const CalendarStyle(
+            markerDecoration: BoxDecoration(
+              color: Colors.deepPurpleAccent,
+              shape: BoxShape.circle,
+            ),
+          ),
+          headerStyle: const HeaderStyle(
+            formatButtonVisible: false,
+            titleCentered: true,
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        if (selectedDay != null)
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                            _buildDailySummaryItem('수입', dailyIncome, Colors.green, formatter),
+                            _buildDailySummaryItem('지출', dailyExpense, Colors.red, formatter),
+                            _buildDailySummaryItem('합계', dailyNet, dailyNet >= 0 ? Colors.blue : Colors.red, formatter),
+                        ],
+                    ),
+                ),
+            ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: selectedDayEvents.length,
+            itemBuilder: (context, index) {
+              final event = selectedDayEvents[index];
+              final color = event.type == 'income' ? Colors.green : Colors.red;
+              final icon = event.type == 'income' ? Icons.arrow_downward : Icons.arrow_upward;
+
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: color.withOpacity(0.1),
+                    child: Icon(icon, color: color, size: 30),
+                  ),
+                  title: Text(
+                    event.category,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    event.description ?? '',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                  trailing: Text(
+                    '${event.type == 'income' ? '+' : '-'}${formatter.format(event.amount)}',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  onTap: () => _showTransactionDialog(context, event.type, transaction: event),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDailySummaryItem(String title, double amount, Color color, NumberFormat formatter) {
+    return Column(
+      children: [
+        Text(title, style: const TextStyle(fontSize: 14, color: Colors.black54)),
+        const SizedBox(height: 4),
+        Text(
+          formatter.format(amount),
+          style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.bold),
+        ),
+      ],
     );
   }
 }
