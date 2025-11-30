@@ -1,31 +1,41 @@
-
 package com.example.AccountMgmt
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.content.SharedPreferences
+import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
-import com.example.AccountMgmt.R
-import com.example.AccountMgmt.MainActivity
-import es.antonborri.home_widget.HomeWidgetBackgroundIntent
-import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
 
 class AppWidgetProvider : HomeWidgetProvider() {
-    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: android.content.SharedPreferences) {
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_layout).apply {
                 // Open App on Widget Click
-                val pendingIntent = HomeWidgetLaunchIntent.getActivity(
+                val pendingIntent = PendingIntent.getActivity(
                     context,
-                    MainActivity::class.java,
-                    Uri.parse("home_widget://open_add_expense")
+                    0,
+                    Intent(context, MainActivity::class.java),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-                val balance = widgetData.getString("current_balance", "0")
-                setTextViewText(R.id.tv_balance, balance)
+                val balance = widgetData.getString("current_balance", "₩0")
+                setTextViewText(R.id.tv_balance, balance ?: "₩0")
+
+                // Add Expense Button Click
+                val addExpenseIntent = Intent(context, MainActivity::class.java).apply {
+                    action = "android.intent.action.VIEW"
+                    data = Uri.parse("accountmgmt://open_add_expense")
+                }
+                val addExpensePendingIntent = PendingIntent.getActivity(
+                    context, 
+                    1, 
+                    addExpenseIntent, 
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                setOnClickPendingIntent(R.id.btn_add_expense, addExpensePendingIntent)
             }
             appWidgetManager.updateAppWidget(widgetId, views)
         }

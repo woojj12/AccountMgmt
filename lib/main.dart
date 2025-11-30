@@ -493,6 +493,33 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
     }
   }
 
+  void _deleteTransaction() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('거래내역 삭제'),
+        content: const Text('정말로 이 거래내역을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            child: const Text('취소'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+          ),
+          TextButton(
+            child: const Text('삭제'),
+            onPressed: () {
+              Provider.of<TransactionProvider>(context, listen: false)
+                  .deleteTransaction(widget.transaction!.id!);
+              Navigator.of(ctx).pop(); // Close the confirmation dialog
+              Navigator.of(context).pop(); // Close the edit dialog
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -551,6 +578,12 @@ class _AddEditTransactionDialogState extends State<AddEditTransactionDialog> {
         ),
       ),
       actions: <Widget>[
+        if (widget.transaction != null)
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _deleteTransaction,
+          ),
+        const Spacer(),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('취소'),
